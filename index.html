@@ -8,7 +8,7 @@
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
 button { padding: 10px; margin: 5px 0; font-size: 16px; }
-input { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px; }
+input, textarea { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px; }
 .hidden { display: none; }
 #revealedWords { margin-top: 15px; font-weight: bold; }
 </style>
@@ -18,14 +18,17 @@ input { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px; }
 
 <h1>Anagram Trainer</h1>
 
+<div id="mainMenu">
 <h2>Add Words</h2>
-<textarea id="wordInput" rows="4" style="width:100%;" placeholder="Enter words separated by commas"></textarea>
+<textarea id="wordInput" rows="4" placeholder="Enter words separated by commas"></textarea>
 <button onclick="saveWords()">Save Words</button>
 
 <h2>Practice</h2>
-<button onclick="startPractice()">Start</button>
+<button onclick="startPractice()">Start Practice</button>
+</div>
 
 <div id="practiceArea" class="hidden">
+
 <p id="jumbledLetters"></p>
 
 <input 
@@ -35,16 +38,18 @@ input { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px; }
   autocomplete="off"
   autocorrect="off"
   autocapitalize="none"
-  spellcheck="false"
+ spellcheck="false"
 />
+
 <button onclick="submitAnswer()">Submit</button>
 <button onclick="revealAnswers()">Reveal Answers</button>
+<button id="nextButton" class="hidden" onclick="nextAnagram()">Next</button>
+<button onclick="exitPractice()">Back to Lists</button>
 
 <p id="counter"></p>
 <p id="status" aria-live="polite"></p>
 <div id="revealedWords" aria-live="polite"></div>
 
-<button id="nextButton" class="hidden" onclick="nextAnagram()">Next</button>
 </div>
 
 <script>
@@ -66,11 +71,17 @@ function shuffle(word) {
 }
 
 function startPractice() {
-    if (wordList.length === 0) {
-        alert("No word sets saved.");
+    if (wordList.length === 0) { alert("No word sets saved.");
         return;
-    } document.getElementById("practiceArea").classList.remove("hidden");
+    }
+    document.getElementById("mainMenu").classList.add("hidden");
+    document.getElementById("practiceArea").classList.remove("hidden");
     nextAnagram();
+}
+
+function exitPractice() {
+    document.getElementById("practiceArea").classList.add("hidden");
+    document.getElementById("mainMenu").classList.remove("hidden");
 }
 
 function spellLetters(word) {
@@ -91,8 +102,7 @@ function nextAnagram() {
     correctAnswers = [];
     remainingAnswers = [...currentSet];
 
-    let jumbled = shuffle(currentSet[0]);
-    document.getElementById("jumbledLetters").textContent = jumbled;
+    let jumbled = shuffle(currentSet[0]); document.getElementById("jumbledLetters").textContent = jumbled;
 
     speak("New letters: " + spellLetters(jumbled));
     updateCounter();
@@ -122,8 +132,7 @@ function submitAnswer() {
 
     if (remainingAnswers.length === 0) {
         speak("Correct");
-        setCompleteSound.play();
-        document.getElementById("nextButton").classList.remove("hidden");
+        setCompleteSound.play(); document.getElementById("nextButton").classList.remove("hidden");
     }
 }
 
@@ -133,7 +142,8 @@ function revealAnswers() {
     speak("Answers revealed");
 }
 
-function updateCounter() { document.getElementById("counter").textContent =
+function updateCounter() {
+    document.getElementById("counter").textContent =
         correctAnswers.length + " of " + currentSet.length + " correct";
 }
 </script>
