@@ -4,176 +4,137 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anagram Trainer</title>
+
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
-button { margin: 5px 0; padding: 10px; }
-input, textarea { padding: 8px; margin: 5px 0; width: 100%; }
+button { padding: 10px; margin: 5px 0; font-size: 16px; }
+input { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px; }
 .hidden { display: none; }
+#revealedWords { margin-top: 15px; font-weight: bold; }
 </style>
 </head>
+
 <body>
 
 <h1>Anagram Trainer</h1>
 
-<section id="listManager">
-<h2>Your Lists</h2>
-<div id="lists"></div>
-<input id="newListName" placeholder="New list name">
-<button onclick="createList()">Create List</button>
-</section>
+<h2>Add Words</h2>
+<textarea id="wordInput" rows="4" style="width:100%;" placeholder="Enter words separated by commas"></textarea>
+<button onclick="saveWords()">Save Words</button>
 
-<section id="wordManager" class="hidden">
-<h2 id="currentListTitle"></h2>
-<textarea id="wordInput" placeholder="Enter words separated by commas"></textarea>
-<button onclick="addWords()">Save Words</button>
-<button onclick="startStudy()">Start Study</button>
-<button onclick="goBack()">Back</button>
-</section>
+<h2>Practice</h2>
+<button onclick="startPractice()">Start</button>
 
-<section id="studySection" class="hidden">
-<h2 id="jumbleDisplay"></h2>
-<p id="anagramCount"></p>
-<input id="guessInput" placeholder="Enter your guess">
-<button onclick="submitGuess()">Submit</button>
+<div id="practiceArea" class="hidden">
+<p id="jumbledLetters"></p>
+
+<input 
+  id="answerInput" 
+  type="text" 
+  placeholder="Type answer(s) separated by space"
+  autocomplete="off"
+  autocorrect="off"
+  autocapitalize="none"
+  spellcheck="false"
+/>
+<button onclick="submitAnswer()">Submit</button>
 <button onclick="revealAnswers()">Reveal Answers</button>
-<p id="progress"></p>
-<button id="nextButton" class="hidden" onclick="nextSet()">Next</button>
-</section>
+
+<p id="counter"></p>
+<p id="status" aria-live="polite"></p>
+<div id="revealedWords" aria-live="polite"></div>
+
+<button id="nextButton" class="hidden" onclick="nextAnagram()">Next</button>
+</div>
 
 <script>
-let lists = JSON.parse(localStorage.getItem("scrabbleLists")) || {};
-let currentList = null;
+let wordList = JSON.parse(localStorage.getItem("scrabbleLists")) || [];
 let currentSet = [];
-let foundWords = [];
-let currentKey = "";
+let correctAnswers = [];
+let remainingAnswers = [];
 
-function save() {
-localStorage.setItem("scrabbleLists", JSON.stringify(lists));
-}
-
-function renderLists() {
-let container = document.getElementById("lists");
-container.innerHTML = "";
-for (let name in lists) {
-let btn = document.createElement("button");
-btn.innerText = name;
-btn.onclick = () => openList(name);
-container.appendChild(btn);
-}
-}
-renderLists();
-
-function createList() {
-let name = document.getElementById("newListName").value.trim();
-if (!name) return;
-lists[name] = {};
-save();
-renderLists(); document.getElementById("newListName").value = "";
+function saveWords() {
+    let input = document.getElementById("wordInput").value;
+    let words = input.split(",").map(w => w.trim().toLowerCase()).filter(Boolean);
+    wordList.push(words);
+    localStorage.setItem("scrabbleLists", JSON.stringify(wordList));
+    alert("Words saved");
 }
 
-function openList(name) {
-currentList = name;
-document.getElementById("listManager").classList.add("hidden");
-document.getElementById("wordManager").classList.remove("hidden");
-document.getElementById("currentListTitle").innerText = name;
+function shuffle(word) {
+    return word.split("").sort(() => Math.random() - 0.5).join("");
 }
 
-function goBack() {
-document.getElementById("wordManager").classList.add("hidden");
-document.getElementById("listManager").classList.remove("hidden");
+function startPractice() {
+    if (wordList.length === 0) {
+        alert("No word sets saved.");
+        return;
+    } document.getElementById("practiceArea").classList.remove("hidden");
+    nextAnagram();
 }
 
-function addWords() {
-let input = document.getElementById("wordInput").value;
-let words = input.split(",").map(w => w.trim().toUpperCase()).filter(Boolean);
-words.forEach(word => {
-let key = sortLetters(word);
-if (!lists[currentList][key]) lists[currentList][key] = [];
-if (!lists[currentList][key].includes(word)) {
-lists[currentList][key].push(word);
-}
-});
-save();
-document.getElementById("wordInput").value = "";
+function spellLetters(word) {
+    return word.split("").join(" ");
 }
 
-function sortLetters(word) {
-let vowels = word.match(/[AEIOU]/g) || [];
-let consonants = word.match(/[^AEIOU]/g) || [];
-return vowels.sort().join("") + consonants.sort().join("");
+function speak(text) {
+    let status = document.getElementById("status");
+    status.textContent = "";
+    setTimeout(() => { status.textContent = text; }, 100);
 }
 
-function startStudy() {
-let keys = Object.keys(lists[currentList]);
-if (keys.length === 0) return;
-currentKey = keys[Math.floor(Math.random() * keys.length)];
-currentSet = lists[currentList][currentKey];
-foundWords = [];
-document.getElementById("wordManager").classList.add("hidden");
-document.getElementById("studySection").classList.remove("hidden");
-document.getElementById("jumbleDisplay").innerText = currentKey;
-document.getElementById("anagramCount").innerText = currentSet.length + " anagrams required.";
-document.getElementById("nextButton").classList.add("hidden");
-updateProgress();
+function nextAnagram() {
+    document.getElementById("revealedWords").textContent = "";
+    document.getElementById("nextButton").classList.add("hidden");
+
+    currentSet = wordList[Math.floor(Math.random() * wordList.length)];
+    correctAnswers = [];
+    remainingAnswers = [...currentSet];
+
+    let jumbled = shuffle(currentSet[0]);
+    document.getElementById("jumbledLetters").textContent = jumbled;
+
+    speak("New letters: " + spellLetters(jumbled));
+    updateCounter();
 }
 
-function submitGuess() {
-let guess = document.getElementById("guessInput").value.toUpperCase().trim();
-if (currentSet.includes(guess) && !foundWords.includes(guess)) {
-foundWords.push(guess);
-playCorrectSound();
-announce("Correct");
-}
-document.getElementById("guessInput").value = "";
-updateProgress();
-}
+function submitAnswer() {
+    let input = document.getElementById("answerInput");
+    let entries = input.value.toLowerCase().trim().split(" ").filter(Boolean);
+    input.value = "";
 
-function updateProgress() { document.getElementById("progress").innerText =
-foundWords.length + " of " + currentSet.length + " found.";
-if (foundWords.length === currentSet.length) {
-playCompleteSound();
-announce("Correct");
-document.getElementById("nextButton").classList.remove("hidden");
-}
+    let correctSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+    let setCompleteSound = new Audio("https://actions.google.com/sounds/v1/cartoon/concussive_drum_hit.ogg");
+
+    let foundNewCorrect = false;
+
+    entries.forEach(entry => {
+        if (remainingAnswers.includes(entry)) {
+            correctAnswers.push(entry);
+            remainingAnswers = remainingAnswers.filter(w => w !== entry);
+            foundNewCorrect = true;
+        }
+    });
+
+    if (foundNewCorrect) correctSound.play();
+
+    updateCounter();
+
+    if (remainingAnswers.length === 0) {
+        speak("Correct");
+        setCompleteSound.play();
+        document.getElementById("nextButton").classList.remove("hidden");
+    }
 }
 
 function revealAnswers() {
-let remaining = currentSet.filter(w => !foundWords.includes(w));
-announce("Answers: " + remaining.join(", "));
-document.getElementById("nextButton").classList.remove("hidden");
+    let revealDiv = document.getElementById("revealedWords");
+    revealDiv.textContent = "Answers: " + currentSet.join(", ");
+    speak("Answers revealed");
 }
 
-function nextSet() {
-startStudy();
-}
-
-function announce(message) {
-let live = document.createElement("div");
-live.setAttribute("aria-live", "assertive");
-live.classList.add("hidden");
-document.body.appendChild(live);
-live.innerText = message;
-setTimeout(() => document.body.removeChild(live), 500);
-}
-
-function playCorrectSound() {
-let ctx = new (window.AudioContext || window.webkitAudioContext)();
-let osc = ctx.createOscillator();
-osc.type = "sine";
-osc.frequency.value = 800;
-osc.connect(ctx.destination);
-osc.start(); osc.stop(ctx.currentTime + 0.1);
-}
-
-function playCompleteSound() {
-let ctx = new (window.AudioContext || window.webkitAudioContext)();
-let osc = ctx.createOscillator();
-osc.type = "sine";
-osc.frequency.value = 600;
-osc.connect(ctx.destination);
-osc.start();
-osc.frequency.setValueAtTime(900, ctx.currentTime + 0.1);
-osc.stop(ctx.currentTime + 0.3);
+function updateCounter() { document.getElementById("counter").textContent =
+        correctAnswers.length + " of " + currentSet.length + " correct";
 }
 </script>
 
