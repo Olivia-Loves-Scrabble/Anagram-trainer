@@ -10,7 +10,6 @@ body { font-family: Arial, sans-serif; padding: 20px; }
 button { padding: 10px; margin: 5px 0; font-size: 16px; }
 input, textarea { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px; }
 .hidden { display: none; }
-#revealedWords { margin-top: 15px; font-weight: bold; }
 </style>
 </head>
 
@@ -19,12 +18,15 @@ input, textarea { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px;
 <h1>Anagram Trainer</h1>
 
 <div id="mainMenu">
+
 <h2>Add Words</h2>
 <textarea id="wordInput" rows="4" placeholder="Enter words separated by commas"></textarea>
 <button onclick="saveWords()">Save Words</button>
 
-<h2>Practice</h2>
+<h2>Choose List</h2>
+<select id="listSelector"></select>
 <button onclick="startPractice()">Start Practice</button>
+
 </div>
 
 <div id="practiceArea" class="hidden">
@@ -32,8 +34,8 @@ input, textarea { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px;
 <p id="jumbledLetters"></p>
 
 <input 
-  id="answerInput" 
-  type="text" 
+  id="answerInput"
+  type="text"
   placeholder="Type answer(s) separated by space"
   autocomplete="off"
   autocorrect="off"
@@ -43,27 +45,44 @@ input, textarea { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px;
 
 <button onclick="submitAnswer()">Submit</button>
 <button onclick="revealAnswers()">Reveal Answers</button>
-<button id="nextButton" class="hidden" onclick="nextAnagram()">Next</button>
 <button onclick="exitPractice()">Back to Lists</button>
 
 <p id="counter"></p>
 <p id="status" aria-live="polite"></p>
-<div id="revealedWords" aria-live="polite"></div>
+<p id="revealedWords"></p>
 
 </div>
 
 <script>
-let wordList = JSON.parse(localStorage.getItem("scrabbleLists")) || [];
+
+let wordLists = JSON.parse(localStorage.getItem("scrabbleLists")) || [];
 let currentSet = [];
-let correctAnswers = [];
 let remainingAnswers = [];
+let correctAnswers = [];
 
 function saveWords() {
     let input = document.getElementById("wordInput").value;
     let words = input.split(",").map(w => w.trim().toLowerCase()).filter(Boolean);
-    wordList.push(words);
-    localStorage.setItem("scrabbleLists", JSON.stringify(wordList));
+
+    if (words.length === 0) return;
+
+    wordLists.push(words);
+    localStorage.setItem("scrabbleLists", JSON.stringify(wordLists));
+    document.getElementById("wordInput").value = "";
+    populateSelector();
     alert("Words saved");
+}
+
+function populateSelector() {
+    let selector = document.getElementById("listSelector");
+    selector.innerHTML = "";
+
+    wordLists.forEach((list, index) => {
+        let option = document.createElement("option");
+        option.value = index;
+        option.textContent = "List " + (index + 1) + " (" + list.length + " words)";
+        selector.appendChild(option);
+    });
 }
 
 function shuffle(word) {
@@ -71,40 +90,31 @@ function shuffle(word) {
 }
 
 function startPractice() {
-    if (wordList.length === 0) { alert("No word sets saved.");
+    if (wordLists.length === 0) {
+        alert("No lists available.");
         return;
     }
-    document.getElementById("mainMenu").classList.add("hidden");
-    document.getElementById("practiceArea").classList.remove("hidden");
-    nextAnagram();
-}
 
-function exitPractice() {
-    document.getElementById("practiceArea").classList.add("hidden");
-    document.getElementById("mainMenu").classList.remove("hidden");
-}
+    let selectedIndex = document.getElementById("listSelector").value;
+    currentSet = wordLists[selectedIndex];
 
-function spellLetters(word) {
-    return word.split("").join(" ");
-}
-
-function speak(text) {
-    let status = document.getElementById("status");
-    status.textContent = "";
-    setTimeout(() => { status.textContent = text; }, 100);
-}
-
-function nextAnagram() {
-    document.getElementById("revealedWords").textContent = "";
-    document.getElementById("nextButton").classList.add("hidden");
-
-    currentSet = wordList[Math.floor(Math.random() * wordList.length)];
     correctAnswers = [];
     remainingAnswers = [...currentSet];
 
-    let jumbled = shuffle(currentSet[0]); document.getElementById("jumbledLetters").textContent = jumbled;
+    document.getElementById("mainMenu").classList.add("hidden");
+    document.getElementById("practiceArea").classList.remove("hidden");
 
-    speak("New letters: " + spellLetters(jumbled));
+    loadAnagram();
+}
+
+function loadAnagram() {
+    document.getElementById("revealedWords").textContent = "";
+
+    let baseWord = currentSet[0];
+    let jumbled = shuffle(baseWord); document.getElementById("jumbledLetters").textContent = jumbled;
+
+    speak("New letters: " + jumbled.split("").join(" "));
+
     updateCounter();
 }
 
@@ -114,31 +124,31 @@ function submitAnswer() {
     input.value = "";
 
     let correctSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
-    let setCompleteSound = new Audio("https://actions.google.com/sounds/v1/cartoon/concussive_drum_hit.ogg");
+    let completeSound = new Audio("https://actions.google.com/sounds/v1/cartoon/concussive_drum_hit.ogg");
 
-    let foundNewCorrect = false;
+    let newCorrect = false;
 
-    entries.forEach(entry => {
-        if (remainingAnswers.includes(entry)) {
-            correctAnswers.push(entry);
-            remainingAnswers = remainingAnswers.filter(w => w !== entry);
-            foundNewCorrect = true;
+    entries.forEach(word => {
+        if (remainingAnswers.includes(word)) {
+            correctAnswers.push(word);
+            remainingAnswers = remainingAnswers.filter(w => w !== word);
+            newCorrect = true;
         }
     });
 
-    if (foundNewCorrect) correctSound.play();
+    if (newCorrect) correctSound.play();
 
     updateCounter();
 
     if (remainingAnswers.length === 0) {
         speak("Correct");
-        setCompleteSound.play(); document.getElementById("nextButton").classList.remove("hidden");
+        completeSound.play();
     }
 }
 
 function revealAnswers() {
-    let revealDiv = document.getElementById("revealedWords");
-    revealDiv.textContent = "Answers: " + currentSet.join(", ");
+    let reveal = document.getElementById("revealedWords");
+    reveal.textContent = "Answers: " + currentSet.join(", ");
     speak("Answers revealed");
 }
 
@@ -146,6 +156,20 @@ function updateCounter() {
     document.getElementById("counter").textContent =
         correctAnswers.length + " of " + currentSet.length + " correct";
 }
+
+function exitPractice() {
+    document.getElementById("practiceArea").classList.add("hidden");
+    document.getElementById("mainMenu").classList.remove("hidden");
+}
+
+function speak(text) {
+    let status = document.getElementById("status");
+    status.textContent = "";
+    setTimeout(() => { status.textContent = text; }, 100);
+}
+
+populateSelector();
+
 </script>
 
 </body>
