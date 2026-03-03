@@ -3,145 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scrabble Trainer</title>
+<title>Anagram Trainer</title>
+
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
-button { margin: 5px 0; padding: 10px; }
-input { padding: 8px; margin: 5px 0; width: 100%; }
+button { padding: 10px; margin: 5px 0; font-size: 16px; }
+input, textarea { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px; }
 .hidden { display: none; }
 </style>
 </head>
+
 <body>
 
-<h1>Scrabble Trainer</h1>
+<h1>Anagram Trainer</h1>
 
-<section id="listManager">
-<h2>Your Lists</h2>
-<div id="lists"></div>
+<h2>Add Words</h2>
+<textarea id="wordInput" rows="4" placeholder="Enter words separated by commas"></textarea>
+<button onclick="saveWords()">Save Words</button>
 
-<input id="newListName" placeholder="New list name">
-<button onclick="createList()">Create List</button>
-</section>
+<h2>Choose List</h2>
+<select id="listSelector"></select>
+<button onclick="startPractice()">Start Practice</button>
 
-<section id="wordManager" class="hidden">
-<h2 id="currentListTitle"></h2>
+<div id="practiceArea" class="hidden">
+<p id="jumbledLetters"></p>
 
-<textarea id="wordInput" placeholder="Enter words separated by commas"></textarea>
-<button onclick="addWords()">Add Words</button>
-<button onclick="startStudy()">Start Study</button>
-<button onclick="goBack()">Back</button>
-</section>
+<input id="answerInput" type="text" placeholder="Type your answer">
+<button onclick="submitAnswer()">Submit</button>
+<button onclick="revealAnswers()">Reveal Answers</button>
+<button onclick="exitPractice()">Back to Lists</button>
 
-<section id="studySection" class="hidden">
-<h2 id="jumbleDisplay"></h2>
-<p id="anagramCount"></p> <input id="guessInput" placeholder="Enter your guess">
-<button onclick="submitGuess()">Submit</button>
-<p id="progress"></p>
-<button onclick="exitStudy()">Exit Study</button>
-</section>
-
-<script>
-let lists = JSON.parse(localStorage.getItem("scrabbleLists")) || {};
-let currentList = null;
-let currentSet = [];
-let foundWords = [];
-let currentKey = "";
-
-function save() {
-localStorage.setItem("scrabbleLists", JSON.stringify(lists));
-}
-
-function renderLists() {
-let container = document.getElementById("lists");
-container.innerHTML = "";
-for (let name in lists) {
-let btn = document.createElement("button");
-btn.innerText = name;
-btn.onclick = () => openList(name);
-container.appendChild(btn);
-}
-}
-renderLists();
-
-function createList() {
-let name = document.getElementById("newListName").value.trim();
-if (!name) return;
-lists[name] = {};
-save();
-renderLists();
-document.getElementById("newListName").value = "";
-}
-
-function openList(name) {
-currentList = name; document.getElementById("listManager").classList.add("hidden");
-document.getElementById("wordManager").classList.remove("hidden");
-document.getElementById("currentListTitle").innerText = name;
-}
-
-function goBack() {
-document.getElementById("wordManager").classList.add("hidden");
-document.getElementById("listManager").classList.remove("hidden");
-}
-
-function addWords() {
-let input = document.getElementById("wordInput").value;
-let words = input.split(",").map(w => w.trim().toUpperCase()).filter(Boolean);
-words.forEach(word => {
-let key = sortLetters(word);
-if (!lists[currentList][key]) lists[currentList][key] = [];
-lists[currentList][key].push(word);
-});
-save();
-document.getElementById("wordInput").value = "";
-alert("Words added.");
-}
-
-function sortLetters(word) {
-let vowels = word.match(/[AEIOU]/g) || [];
-let consonants = word.match(/[^AEIOU]/g) || [];
-return vowels.sort().join("") + consonants.sort().join("");
-}
-
-function startStudy() {
-let keys = Object.keys(lists[currentList]);
-if (keys.length === 0) return alert("No words in list.");
-currentKey = keys[Math.floor(Math.random() * keys.length)];
-currentSet = lists[currentList][currentKey];
-foundWords = [];
-document.getElementById("listManager").classList.add("hidden");
-document.getElementById("wordManager").classList.add("hidden");
-document.getElementById("studySection").classList.remove("hidden");
-document.getElementById("jumbleDisplay").innerText = currentKey;
-document.getElementById("anagramCount").innerText = currentSet.length + " anagrams required.";
-updateProgress();
-}
-
-function submitGuess() {
-let guess = document.getElementById("guessInput").value.toUpperCase().trim();
-if (currentSet.includes(guess) && !foundWords.includes(guess)) {
-foundWords.push(guess);
-}
-document.getElementById("guessInput").value = "";
-updateProgress();
-}
-
-function updateProgress() {
-document.getElementById("progress").innerText =
-foundWords.length + " of " + currentSet.length + " found.";
-if (foundWords.length === currentSet.length) {
-alert("Set completed!");
-startStudy();
-}
-}
-
-function exitStudy() {
-document.getElementById("studySection").classList.add("hidden");
-document.getElementById("listManager").classList.remove("hidden");
-}
-</script>
-
-</body>
-</html><p id="revealedWords"></p>
+<p id="counter"></p>
+<p id="revealedWords"></p>
 </div>
 
 <script>
@@ -214,8 +107,7 @@ function submitAnswer() {
 }
 
 function revealAnswers() {
-    document.getElementById("revealedWords").textContent =
-        "Answers: " + currentSet.join(", ");
+    alert("Answers: " + currentSet.join(", "));
 }
 
 function updateCounter() {
