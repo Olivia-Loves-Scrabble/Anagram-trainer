@@ -17,8 +17,6 @@ input, textarea { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px;
 
 <h1>Anagram Trainer</h1>
 
-<div id="mainMenu">
-
 <h2>Add Words</h2>
 <textarea id="wordInput" rows="4" placeholder="Enter words separated by commas"></textarea>
 <button onclick="saveWords()">Save Words</button>
@@ -27,34 +25,19 @@ input, textarea { padding: 10px; font-size: 16px; width: 100%; margin-top: 10px;
 <select id="listSelector"></select>
 <button onclick="startPractice()">Start Practice</button>
 
-</div>
-
 <div id="practiceArea" class="hidden">
-
 <p id="jumbledLetters"></p>
 
-<input 
-  id="answerInput"
-  type="text"
-  placeholder="Type answer(s) separated by space"
-  autocomplete="off"
-  autocorrect="off"
-  autocapitalize="none"
- spellcheck="false"
-/>
-
+<input id="answerInput" type="text" placeholder="Type your answer">
 <button onclick="submitAnswer()">Submit</button>
 <button onclick="revealAnswers()">Reveal Answers</button>
 <button onclick="exitPractice()">Back to Lists</button>
 
 <p id="counter"></p>
-<p id="status" aria-live="polite"></p>
 <p id="revealedWords"></p>
-
 </div>
 
 <script>
-
 let wordLists = JSON.parse(localStorage.getItem("scrabbleLists")) || [];
 let currentSet = [];
 let remainingAnswers = [];
@@ -63,7 +46,6 @@ let correctAnswers = [];
 function saveWords() {
     let input = document.getElementById("wordInput").value;
     let words = input.split(",").map(w => w.trim().toLowerCase()).filter(Boolean);
-
     if (words.length === 0) return;
 
     wordLists.push(words);
@@ -80,8 +62,7 @@ function populateSelector() {
     wordLists.forEach((list, index) => {
         let option = document.createElement("option");
         option.value = index;
-        option.textContent = "List " + (index + 1) + " (" + list.length + " words)";
-        selector.appendChild(option);
+        option.textContent = "List " + (index + 1) + " (" + list.length + " words)"; selector.appendChild(option);
     });
 }
 
@@ -101,55 +82,33 @@ function startPractice() {
     correctAnswers = [];
     remainingAnswers = [...currentSet];
 
-    document.getElementById("mainMenu").classList.add("hidden");
     document.getElementById("practiceArea").classList.remove("hidden");
-
     loadAnagram();
 }
 
 function loadAnagram() {
-    document.getElementById("revealedWords").textContent = "";
-
     let baseWord = currentSet[0];
-    let jumbled = shuffle(baseWord); document.getElementById("jumbledLetters").textContent = jumbled;
-
-    speak("New letters: " + jumbled.split("").join(" "));
-
+    let jumbled = shuffle(baseWord);
+    document.getElementById("jumbledLetters").textContent = jumbled;
     updateCounter();
 }
 
 function submitAnswer() {
     let input = document.getElementById("answerInput");
-    let entries = input.value.toLowerCase().trim().split(" ").filter(Boolean);
+    let guess = input.value.toLowerCase().trim();
     input.value = "";
 
-    let correctSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
-    let completeSound = new Audio("https://actions.google.com/sounds/v1/cartoon/concussive_drum_hit.ogg");
-
-    let newCorrect = false;
-
-    entries.forEach(word => {
-        if (remainingAnswers.includes(word)) {
-            correctAnswers.push(word);
-            remainingAnswers = remainingAnswers.filter(w => w !== word);
-            newCorrect = true;
-        }
-    });
-
-    if (newCorrect) correctSound.play();
+    if (remainingAnswers.includes(guess)) {
+        correctAnswers.push(guess);
+        remainingAnswers = remainingAnswers.filter(w => w !== guess);
+    }
 
     updateCounter();
-
-    if (remainingAnswers.length === 0) {
-        speak("Correct");
-        completeSound.play();
-    }
 }
 
 function revealAnswers() {
-    let reveal = document.getElementById("revealedWords");
-    reveal.textContent = "Answers: " + currentSet.join(", ");
-    speak("Answers revealed");
+    document.getElementById("revealedWords").textContent =
+        "Answers: " + currentSet.join(", ");
 }
 
 function updateCounter() {
@@ -159,17 +118,9 @@ function updateCounter() {
 
 function exitPractice() {
     document.getElementById("practiceArea").classList.add("hidden");
-    document.getElementById("mainMenu").classList.remove("hidden");
-}
-
-function speak(text) {
-    let status = document.getElementById("status");
-    status.textContent = "";
-    setTimeout(() => { status.textContent = text; }, 100);
 }
 
 populateSelector();
-
 </script>
 
 </body>
